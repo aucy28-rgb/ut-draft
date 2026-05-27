@@ -303,6 +303,34 @@ button{
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  set,
+  onValue
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDgyz3aJ_xWjDeKYp5_ocH5OPLzetG9UXA",
+  authDomain: "eafc-team-draft.firebaseapp.com",
+  projectId: "eafc-team-draft",
+  storageBucket: "eafc-team-draft.firebasestorage.app",
+  messagingSenderId: "418665721206",
+  appId: "1:418665721206:web:0977df8fe7435632555e57"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const gameRef = ref(db, "draftState");
+
+window.db = db;
+window.gameRef = gameRef;
+window.set = set;
+window.onValue = onValue;
+</script>
+
 <script>
 
 const client = supabase.createClient(
@@ -819,6 +847,7 @@ window.confirmSelection = async function(){
 
   advanceDraftTurn(); // ONLY this triggers UI refresh
   renderDraftTracker();
+  saveGame();
 };
 
 function skipPick(){
@@ -835,6 +864,7 @@ function skipPick(){
 
   advanceDraftTurn();
   renderDraftTracker();
+  saveGame();
 }
 
 function sortSquad(){
@@ -1010,14 +1040,15 @@ function getSaveData() {
   };
 }
 
-function saveGame(){
-
+async function saveGame() {
   const data = getSaveData();
 
   localStorage.setItem(
     "fifa_pack_save",
     JSON.stringify(data)
   );
+
+  await set(gameRef, data);
 }
 
 // ---------------- LOAD GAME ----------------
@@ -1320,8 +1351,36 @@ function initGame(){
   renderSquad();
 }
 
+function startRealtimeSync() {
+  onValue(gameRef, (snapshot) => {
+    const save = snapshot.val();
+
+    if (!save) return;
+
+    teams = save.teams || [];
+    activeTeamIndex = save.draftTeamIndex ?? 0;
+    draftTeamIndex = save.draftTeamIndex ?? 0;
+    draftDirection = save.draftDirection ?? 1;
+    draftPickNumber = save.draftPickNumber ?? 1;
+    currentRound = save.currentRound ?? 1;
+    draftHistory = save.draftHistory ?? [];
+
+    usedPlayerIds = new Set(save.usedPlayerIds || []);
+
+    selectedPlayer = null;
+    currentPackPlayers = [];
+    gameState = "IDLE";
+
+    syncUI();
+    renderDraftTracker();
+
+    document.getElementById("output").innerHTML = "";
+  });
+}
+
 window.onload = function(){
   initGame();
+  startRealtimeSync();
 };
 
 </script>
