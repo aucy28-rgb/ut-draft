@@ -315,20 +315,18 @@ import {
 const firebaseConfig = {
   apiKey: "AIzaSyDgyz3aJ_xWjDeKYp5_ocH5OPLzetG9UXA",
   authDomain: "eafc-team-draft.firebaseapp.com",
-  projectId: "eafc-team-draft",
-  storageBucket: "eafc-team-draft.firebasestorage.app",
-  messagingSenderId: "418665721206",
-  appId: "1:418665721206:web:0977df8fe7435632555e57"
+  projectId: "eafc-team-draft"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
 const gameRef = ref(db, "draftState");
 
-window.db = db;
+// 🔥 EXPOSE EVERYTHING YOU NEED
 window.gameRef = gameRef;
-window.set = set;
-window.onValue = onValue;
+window.firebaseSet = set;
+window.firebaseOnValue = onValue;
 </script>
 
 <script>
@@ -1041,11 +1039,12 @@ function getSaveData() {
 }
 
 async function saveGame(){
+
   const data = getSaveData();
 
   localStorage.setItem("fifa_pack_save", JSON.stringify(data));
 
-  await set(gameRef, data);
+  await window.firebaseSet(window.gameRef, data);
 }
 
 // ---------------- LOAD GAME ----------------
@@ -1380,24 +1379,25 @@ window.onload = function(){
   startRealtimeSync();
 };
 
-onValue(gameRef, (snap) => {
-  const save = snap.val();
-  if (!save) return;
+window.firebaseOnValue(window.gameRef, (snap) => {
 
-  teams = save.teams || [];
-  activeTeamIndex = save.draftTeamIndex ?? 0;
-  draftTeamIndex = save.draftTeamIndex ?? 0;
-  draftDirection = save.draftDirection ?? 1;
-  draftHistory = save.draftHistory ?? [];
+  const data = snap.val();
+  if (!data) return;
 
-  usedPlayerIds = new Set(save.usedPlayerIds || []);
+  console.log("SYNC RECEIVED", data);
+
+  teams = data.teams || [];
+  activeTeamIndex = data.activeTeamIndex ?? 0;
+  draftTeamIndex = data.draftTeamIndex ?? 0;
+  draftHistory = data.draftHistory ?? [];
+
+  usedPlayerIds = new Set(data.usedPlayerIds || []);
 
   gameState = "IDLE";
   selectedPlayer = null;
   currentPackPlayers = [];
 
   syncUI();
-  renderSquad();
   renderDraftTracker();
 });
 
