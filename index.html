@@ -3,7 +3,7 @@
 
 <head>
 <meta charset="UTF-8">
-<title>FIFA Pack Engine TEST</title>
+<title>FIFA Pack Engine</title>
 
 <style>
 
@@ -1040,13 +1040,10 @@ function getSaveData() {
   };
 }
 
-async function saveGame() {
+async function saveGame(){
   const data = getSaveData();
 
-  localStorage.setItem(
-    "fifa_pack_save",
-    JSON.stringify(data)
-  );
+  localStorage.setItem("fifa_pack_save", JSON.stringify(data));
 
   await set(gameRef, data);
 }
@@ -1382,6 +1379,27 @@ window.onload = function(){
   initGame();
   startRealtimeSync();
 };
+
+onValue(gameRef, (snap) => {
+  const save = snap.val();
+  if (!save) return;
+
+  teams = save.teams || [];
+  activeTeamIndex = save.draftTeamIndex ?? 0;
+  draftTeamIndex = save.draftTeamIndex ?? 0;
+  draftDirection = save.draftDirection ?? 1;
+  draftHistory = save.draftHistory ?? [];
+
+  usedPlayerIds = new Set(save.usedPlayerIds || []);
+
+  gameState = "IDLE";
+  selectedPlayer = null;
+  currentPackPlayers = [];
+
+  syncUI();
+  renderSquad();
+  renderDraftTracker();
+});
 
 </script>
 
