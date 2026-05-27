@@ -574,16 +574,14 @@ function weightedTier(weights){
 
   async function openPack(pack){
 
-  const turnTeam = getDraftTeam();
+  const turnTeam = teams[draftTeamIndex];
+
+  if (!turnTeam) return;
+
   const viewTeam = getActiveTeam();
 
   currentPackPlayers = [];
   document.getElementById("output").innerHTML = "";
-
-  if (viewTeam !== turnTeam) {
-    alert(`It's not your turn! It's ${turnTeam.name}'s pick.`);
-    return;
-  }
 
   const team = turnTeam;
 
@@ -1363,6 +1361,7 @@ function startRealtimeSync() {
     teams = save.teams || [];
     activeTeamIndex = save.draftTeamIndex ?? 0;
     draftTeamIndex = save.draftTeamIndex ?? 0;
+    activeTeamIndex = draftTeamIndex;
     draftDirection = save.draftDirection ?? 1;
     draftPickNumber = save.draftPickNumber ?? 1;
     currentRound = save.currentRound ?? 1;
