@@ -315,7 +315,8 @@ import {
 const firebaseConfig = {
   apiKey: "AIzaSyDgyz3aJ_xWjDeKYp5_ocH5OPLzetG9UXA",
   authDomain: "eafc-team-draft.firebaseapp.com",
-  projectId: "eafc-team-draft"
+  projectId: "eafc-team-draft",
+  databaseURL: "https://eafc-team-draft-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -323,10 +324,12 @@ const db = getDatabase(app);
 
 const gameRef = ref(db, "draftState");
 
-// 🔥 EXPOSE EVERYTHING YOU NEED
+// 🔥 CRITICAL: expose everything globally
 window.gameRef = gameRef;
 window.firebaseSet = set;
 window.firebaseOnValue = onValue;
+
+console.log("🔥 Firebase module loaded");
 </script>
 
 <script>
