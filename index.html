@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<title>FIFA Pack Engine</title>
+
+<style>
+
+body{
+  font-family:Arial;
+  background:#f5f5f5;
+  padding:20px;
+}
+
+button{
+  padding:10px 16px;
+  margin:4px;
+  cursor:pointer;
+}
+
+.card{
+  width:360px;
+  height:130px;
+  perspective:1000px;
+  cursor:pointer;
+  margin-bottom:12px;
+}
+
+.card-inner{
+  position:relative;
+  width:100%;
+  height:100%;
+  transition:transform 0.7s;
+  transform-style:preserve-3d;
+}
+
+.card.flipped .card-inner{
+  transform:rotateY(180deg);
+}
+
+.card-front,
+.card-back{
+  position:absolute;
+  width:100%;
+  height:100%;
+  border-radius:14px;
+  backface-visibility:hidden;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:12px;
+  box-sizing:border-box;
+  background:white;
+}
+
+.card-back{
+  background:linear-gradient(135deg,#222,#444);
+  color:white;
+  justify-content:center;
+  font-weight:bold;
+  font-size:20px;
+}
+
+.card-front{
+  transform:rotateY(180deg);
+}
+
+.player-image{
+  width:90px;
+  height:90px;
+  object-fit:contain;
+  flex-shrink:0;
+}
+
+.player-info{
+  line-height:1.4;
+}
+
+.player-topline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.position-group{
+  font-weight:700;
+  font-size:13px;
+  color:#222;
+  letter-spacing:.3px;
+}
+
+/* primary position (CB / LB / CAM etc) */
+.position-primary{
+  font-size:11px;
+  color:#9a9a9a;
+}
+
+.player-name{
+  font-size:14px;
+  font-weight:600;
+  color:#111;
+  line-height:1.1;
+}
+
+.player-overall{
+  font-size:12px;
+  color:#666;
+}
+
+.squad-player{
+  padding:8px 10px;
+  border:1px solid #ddd;
+  margin-bottom:6px;
+  background:white;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-radius:8px;
+}
+
+.squad-left{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.sell-section{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.sell-value{
+  font-size:12px;
+  color:#777;
+  min-width:70px;
+  text-align:right;
+}
+
+.sell-btn{
+  padding:6px 10px;
+  font-size:12px;
+  border:none;
+  border-radius:6px;
+  background:#efefef;
+  cursor:pointer;
+}
+
+.squad-player{
+  transition:0.15s ease;
+}
+
+.squad-player:hover{
+  transform:scale(1.01);
+  border-color:#bbb;
+}
+
+#draftBoard {
+  margin-top: 10px;
+  overflow-x: auto;
+}
+
+.draft-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 600px;
+  font-size: 12px;
+}
+
+.draft-table th {
+  background: #111;
+  color: white;
+  padding: 8px;
+  position: sticky;
+  top: 0;
+}
+
+.draft-table td {
+  border: 1px solid #ddd;
+  padding: 6px;
+  text-align: center;
+  background: white;
+}
+
+.round-cell {
+  background: #f3f3f3;
+  font-weight: bold;
+}
+
+.pick {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.pick strong {
+  display: block;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>FIFA Pack Engine</h1>
+
+<div id="activeTeamDisplay" style="font-weight:bold; margin-bottom:6px;"></div>
+
+<div>
+  💰 Budget:
+  <b id="coins">1,000,000</b>
+</div>
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start;">
+
+  <!-- LEFT: PACKS -->
+  <div>
+    <button onclick="openPack('Standard')">Standard (25k)</button>
+    <button onclick="openPack('Premium')">Premium (50k)</button>
+    <button onclick="openPack('Elite')">Elite (100k)</button>
+
+    <button onclick="openPack('Goalkeeper')">GK (35k)</button>
+    <button onclick="openPack('Defender')">DEF (40k)</button>
+    <button onclick="openPack('Midfielder')">MID (45k)</button>
+    <button onclick="openPack('Winger')">WING (55k)</button>
+    <button onclick="openPack('Striker')">ST (60k)</button>
+  </div>
+
+<div style="margin-bottom:10px;">
+  <label>Draft Mode:</label>
+
+  <select onchange="setDraftMode(this.value)">
+    <option value="turn">Turn Based</option>
+    <option value="snake">Snake Draft</option>
+  </select>
+</div>
+
+<div style="margin-bottom:10px;">
+  <label>Teams:</label>
+<select id="teamCount" onchange="changeTeamCount(this.value)">
+  <option value="2">2</option>
+  <option value="3">3</option>
+  <option value="4">4</option>
+  <option value="5">5</option>
+  <option value="6">6</option>
+  <option value="7">7</option>
+  <option value="8">8</option>
+  <option value="9">9</option>
+  <option value="10">10</option>
+  <option value="11">11</option>
+  <option value="12">12</option>
+  <option value="13">13</option>
+  <option value="14">14</option>
+  <option value="15">15</option>
+</select>
+</div>
+
+<!-- TEAM SWITCH -->
+<div id="teamButtons" style="margin-bottom:10px;"></div>
+
+<div style="margin:10px 0;">
+  <input id="teamNameInput" placeholder="Rename team" />
+  <button onclick="renameActiveTeam()">Rename Team</button>
+</div>
+
+  <!-- RIGHT: SAVE SYSTEM -->
+  <div style="display:flex; flex-direction:column; gap:6px;">
+
+    <button onclick="saveGame()">Save</button>
+    <button onclick="loadGame()">Load</button>
+    <button onclick="exportSave()">Export</button>
+
+    <input type="file" onchange="importSave(event)" />
+
+  </div>
+
+</div>
+
+<div style="margin:10px 0;">
+  <button id="undoBtn" onclick="undoSelection()" disabled>Undo</button>
+  <button onclick="skipPick()">Skip Pick</button>
+  <button id="confirmBtn" onclick="confirmSelection()" disabled>Confirm Player</button>
+</div>
+
+<hr>
+
+<h3>
+  Squad <span id="squadCount">(0)</span>
+</h3>
+
+<div id="squad"></div>
+
+<hr>
+
+<div id="output"></div>
+
+<hr>
+
+<hr>
+
+<h3>Draft Board</h3>
+<div id="draftBoard"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+const client = supabase.createClient(
+  "https://dzqtkknmodlezexrjprr.supabase.co",
+  "sb_publishable_KL6737IdQYb_fhnKVKQt3w_wp_ZG39A"
+);
+
+// ---------------- STATE ----------------
+
+let gameState = "IDLE";
+
+// MULTI-TEAM SYSTEM (NEW)
+let teams = [];
+let activeTeamIndex = 0;
+let draftTeamIndex = 0;
+
+let selectedPlayer = null;
+let currentPackPlayers = [];
+let usedPlayerIds = new Set();
+
+let draftMode = "turn"; // "turn" or "snake"
+let draftDirection = 1; // 1 = forward, -1 = reverse
+
+let draftTurnIndex = 0;
+let draftLocked = false;
+let turnLock = false;
+
+let draftHistory = [];
+let draftPickNumber = 1;
+let currentRound = 1;
+
+let isLoading = false;
+
+
+// ---------------- ECONOMY RULES ----------------
+
+const MIN_SQUAD_SIZE = 18;
+const CHEAPEST_PACK_COST = 25000;
+
+// ---------------- COSTS ----------------
+
+const packCosts = {
+  Standard: 25000,
+  Premium: 50000,
+  Elite: 100000,
+  Goalkeeper: 35000,
+  Defender: 40000,
+  Midfielder: 45000,
+  Winger: 55000,
+  Striker: 60000
+};
+
+// ---------------- POSITION ORDER ----------------
+
+const positionOrder = {
+  GK:1,
+  DEF:2, CB:2, LB:2, RB:2, LWB:2, RWB:2,
+  MID:3, CM:3, CDM:3, CAM:3,
+  WING:4, LW:4, RW:4, LM:4, RM:4,
+  ST:5
+};
+
+// ---------------- UTIL ----------------
+
+function norm(v){
+  return (v || "").toString().trim().toUpperCase();
+}
+
+function getActiveTeam(){
+  return teams[activeTeamIndex];
+}
+
+function getDraftTeam(){
+  return teams[draftTeamIndex];
+}
+
+function getCurrentTurnTeam(){
+  return teams[draftTeamIndex];
+}
+
+function canSelectThisTeam(){
+  return gameState === "SELECTING";
+}
+
+function updateCoinsUI(){
+
+  const team = getActiveTeam();
+
+  document.getElementById("coins").innerText =
+    Number(team.coins).toLocaleString();
+
+  document.getElementById("activeTeamDisplay").innerText =
+    `Viewing: ${team.name} | On The Clock: ${teams[draftTeamIndex]?.name}`;
+}
+
+function syncUI(){
+  updateCoinsUI();
+  renderTeamButtons();
+  renderSquad();
+}
+  
+function resetPackState(){
+  gameState = "IDLE";
+
+  const undoBtn = document.getElementById("undoBtn");
+  const confirmBtn = document.getElementById("confirmBtn");
+
+  if(undoBtn) undoBtn.disabled = true;
+  if(confirmBtn) confirmBtn.disabled = true;
+
+  selectedPlayer = null;
+}
+
+// ---------------- MIN SQUAD SAFETY ----------------
+
+function getRemainingPlayersNeeded(){
+  return Math.max(0, MIN_SQUAD_SIZE - squad.length);
+}
+
+function canOpenPack(pack){
+
+  const team = getActiveTeam();
+
+  const remainingPlayersNeeded = MIN_SQUAD_SIZE - team.squad.length;
+
+  if(remainingPlayersNeeded <= 0) return true;
+
+  const remainingBudgetAfterPack = team.coins - packCosts[pack];
+
+  if(remainingBudgetAfterPack < 0) return false;
+
+  const hasGK = team.squad.some(p => p.position_group === "GK");
+
+  const packProvidesGK = pack === "Goalkeeper";
+
+  const stillNeedsGK = !hasGK && !packProvidesGK;
+
+  const reservedForGK = stillNeedsGK ? packCosts["Goalkeeper"] : 0;
+
+  const usableBudget = remainingBudgetAfterPack - reservedForGK;
+
+  if(usableBudget < 0) return false;
+
+  const maxRemainingPlayers =
+    Math.floor(usableBudget / CHEAPEST_PACK_COST);
+
+  return maxRemainingPlayers >= (remainingPlayersNeeded - 1);
+}
+
+// ---------------- PACK SIZE ----------------
+
+function packSize(pack){
+
+  switch(pack){
+
+    case "Standard": return 2;
+    case "Premium": return 3;
+    case "Elite": return 5;
+
+    case "Goalkeeper":
+    case "Defender":
+    case "Midfielder":
+    case "Winger":
+    case "Striker":
+      return 4;
+
+    default:
+      return 4;
+  }
+}
+
+// ---------------- FILTERS ----------------
+
+function getFilter(pack){
+
+  return {
+    Goalkeeper:["GK"],
+    Defender:["DEF","CB","LB","RB","LWB","RWB"],
+    Midfielder:["MID","CM","CDM","CAM"],
+    Winger:["WING","LW","RW","LM","RM"],
+    Striker:["ST"]
+  }[pack] || null;
+}
+
+// ---------------- WEIGHTS ----------------
+
+function adjustWeightsForPack(pack, weights){
+
+  let w = { ...weights };
+
+  const positionPacks = [
+    "Goalkeeper",
+    "Defender",
+    "Midfielder",
+    "Winger",
+    "Striker"
+  ];
+
+  if(positionPacks.includes(pack)){
+    w.weight_s *= 0.75;
+    w.weight_a *= 0.9;
+    w.weight_b *= 1.05;
+    w.weight_c *= 1.1;
+  }
+
+  return w;
+}
+
+async function getPackWeights(pack){
+
+  const { data, error } = await client
+    .from("pack_types")
+    .select("weight_s, weight_a, weight_b, weight_c")
+    .eq("name", pack)
+    .single();
+
+  if(error) throw error;
+
+  return data;
+}
+
+function weightedTier(weights){
+
+  const total =
+    weights.weight_s +
+    weights.weight_a +
+    weights.weight_b +
+    weights.weight_c;
+
+  let roll = Math.random() * total;
+
+  if((roll -= weights.weight_s) <= 0) return "S";
+  if((roll -= weights.weight_a) <= 0) return "A";
+  if((roll -= weights.weight_b) <= 0) return "B";
+
+  return "C";
+}
+
+// ---------------- OPEN PACK ----------------
+
+  async function openPack(pack){
+
+  const turnTeam = getDraftTeam();
+  const viewTeam = getActiveTeam();
+
+  currentPackPlayers = [];
+  document.getElementById("output").innerHTML = "";
+
+  if (viewTeam !== turnTeam) {
+    alert(`It's not your turn! It's ${turnTeam.name}'s pick.`);
+    return;
+  }
+
+  const team = turnTeam;
+
+  if (team !== getCurrentTurnTeam()) {
+    alert(`It's not your turn! It's ${turnTeam.name}'s pick.`);
+    return;
+  }
+
+  console.log("ACTIVE TEAM:", getActiveTeam());
+  console.log("COINS TYPE:", typeof getActiveTeam().coins);  
+
+  if(gameState !== "IDLE") return;
+
+  if(!canOpenPack(pack)){
+    alert("You cannot open this pack — not enough budget remaining to complete 18-player squad.");
+    return;
+  }
+
+const cost = packCosts[pack];
+
+console.log("Before:", team.coins);
+
+if (team.coins < cost) {
+  alert("Not enough coins");
+  return;
+}
+
+team.coins -= cost;
+
+syncUI();
+
+console.log("After:", team.coins);
+
+  gameState = "OPENING";
+  selectedPlayer = null;
+
+  const undoBtn = document.getElementById("undoBtn");
+  const confirmBtn = document.getElementById("confirmBtn");
+
+  if(undoBtn) undoBtn.disabled = true;
+  if(confirmBtn) confirmBtn.disabled = true;
+
+  const { data: players } = await client
+    .from("players")
+    .select(`
+      id,
+      name,
+      overall,
+      position_group,
+      position_primary,
+      rating_tier,
+      image_url
+    `)
+    .gte("overall", 80);
+
+  const filter = getFilter(pack);
+  let pool = buildPool(players, filter);
+
+  let weights = await getPackWeights(pack);
+  weights = adjustWeightsForPack(pack, weights);
+
+  const tierMap = { S:[], A:[], B:[], C:[] };
+
+  for(const p of pool){
+
+    const tier = (p.rating_tier || "")
+      .toString()
+      .trim()
+      .toUpperCase();
+
+    if(tierMap[tier]){
+      tierMap[tier].push(p);
+    }
+  }
+
+   currentPackPlayers = [];
+  const output = document.getElementById("output");
+  output.innerHTML = "";
+
+  const size = packSize(pack);
+
+  // Prevent duplicates across squad + current pack
+  const usedIds = new Set();
+
+  teams.forEach(t => {
+    t.squad.forEach(p => usedIds.add(p.id));
+  });
+
+  for(let i = 0; i < size; i++){
+
+    let player = null;
+    let attempts = 0;
+
+    while(!player && attempts < 50){
+
+      const tier = weightedTier(weights);
+      let candidates = (tierMap[tier] || pool).filter(
+        p => !usedIds.has(p.id)
+      );
+
+      if(candidates.length){
+        player = candidates[
+          Math.floor(Math.random() * candidates.length)
+        ];
+      }
+
+      attempts++;
+    }
+
+    if(!player) continue;
+
+    // Mark as used immediately
+    usedIds.add(player.id);
+
+    // Remove from pool
+    pool = pool.filter(p => p.id !== player.id);
+
+    currentPackPlayers.push(player);
+
+    await new Promise(r => setTimeout(r, 600));
+
+    const card = document.createElement("div");
+    card.className = "card";
+    card.onclick = (e) => selectPlayer(player.id, e);
+
+    card.innerHTML = `
+      <div class="card-inner">
+
+        <div class="card-back">PACK</div>
+
+        <div class="card-front"
+          style="border-left:6px solid ${getColor(player.overall)}">
+
+          <img src="${player.image_url}" class="player-image"/>
+
+          <div class="player-info">
+
+            <div>
+              <span class="position-group">${player.position_group}</span>
+              <span class="position-primary">${player.position_primary}</span>
+            </div>
+
+            <div class="player-name">${player.name}</div>
+
+            <div class="player-overall">OVR ${player.overall}</div>
+
+          </div>
+
+        </div>
+
+      </div>
+    `;
+
+    output.appendChild(card);
+
+    setTimeout(() => card.classList.add("flipped"), 100);
+  }
+
+  gameState = "SELECTING";
+};
+
+// ---------------- REST OF FUNCTIONS ----------------
+
+function buildPool(playerList, filter){
+
+  const ownedIds = new Set();
+
+  // collect ALL players owned by ALL teams
+  teams.forEach(t => {
+    t.squad.forEach(p => ownedIds.add(p.id));
+  });
+
+  let pool = playerList.filter(p => !ownedIds.has(p.id));
+
+  if (filter) {
+    pool = pool.filter(p =>
+      filter.includes(norm(p.position_group))
+    );
+  }
+
+  return pool;
+}
+
+function selectPlayer(id, e){
+
+  if (gameState !== "SELECTING") return;
+
+  const turnTeam = getDraftTeam();
+  const viewTeam = getActiveTeam();
+
+  // ONLY block selection if we are truly enforcing turn
+  if (viewTeam !== turnTeam) {
+    console.log("Blocked: not draft team view mismatch");
+    return;
+  }
+
+  selectedPlayer = currentPackPlayers.find(p => p.id === id);
+
+  if(!selectedPlayer) return;
+
+  const undoBtn = document.getElementById("undoBtn");
+  const confirmBtn = document.getElementById("confirmBtn");
+
+  if(undoBtn) undoBtn.disabled = false;
+  if(confirmBtn) confirmBtn.disabled = false;
+
+  document.querySelectorAll(".card").forEach(c => {
+    c.style.opacity = "0.3";
+  });
+
+  if(e && e.currentTarget){
+    e.currentTarget.style.opacity = "1";
+  }
+
+  console.log("Selected:", selectedPlayer.name);
+}
+
+window.confirmSelection = async function(){
+
+  const team = getActiveTeam();
+  if (!team) return;
+
+  if (gameState !== "SELECTING") {
+    alert("Not in selection phase");
+    return;
+  }
+
+  if(!selectedPlayer){
+    alert("No player selected");
+    return;
+  }
+
+  const squad = getActiveTeam().squad;
+
+  const exists = squad.find(p => p.id === selectedPlayer.id);
+  if(exists){
+    alert("Player already in squad!");
+    return;
+  }
+
+  await client.from("owned_players")
+    .insert([{ player_id:selectedPlayer.id }]);
+
+  getActiveTeam().squad.push(selectedPlayer);
+
+  currentPackPlayers = [];
+  document.getElementById("output").innerHTML = "";
+
+  draftHistory.push({
+    pick: draftHistory.length + 1,
+    round: Math.ceil((draftHistory.length + 1) / teams.length),
+    team: getActiveTeam().name,
+    player: selectedPlayer.name,
+    overall: selectedPlayer.overall
+  });
+
+  sortSquad();
+  
+  selectedPlayer = null;
+
+  gameState = "IDLE";
+
+  advanceDraftTurn(); // ONLY this triggers UI refresh
+  renderDraftTracker();
+};
+
+function skipPick(){
+
+  const team = getCurrentTurnTeam();
+
+  draftHistory.push({
+    pick: draftHistory.length + 1,
+    round: Math.ceil((draftHistory.length + 1) / teams.length),
+    team: team.name,
+    player: "SKIPPED",
+    overall: "-"
+  });
+
+  advanceDraftTurn();
+  renderDraftTracker();
+}
+
+function sortSquad(){
+
+  getActiveTeam().squad.sort((a,b) => {
+
+    const aPos = positionOrder[norm(a.position_primary)] || 99;
+    const bPos = positionOrder[norm(b.position_primary)] || 99;
+
+    if(aPos !== bPos) return aPos - bPos;
+    return b.overall - a.overall;
+  });
+}
+
+function renderSquad(){
+
+  const team = getActiveTeam();
+  if (!team) return;
+  const squad = team.squad;
+
+  const squadDiv = document.getElementById("squad");
+  squadDiv.innerHTML = "";
+
+  const groups = {
+    GK: [],
+    DEF: [],
+    MID: [],
+    WING: [],
+    ST: []
+  };
+
+  squad.forEach(p => {
+
+    const pos = (p.position_group || "").toUpperCase();
+
+    if(pos === "GK") groups.GK.push(p);
+    else if(["DEF","CB","LB","RB","LWB","RWB"].includes(pos)) groups.DEF.push(p);
+    else if(["MID","CM","CDM","CAM"].includes(pos)) groups.MID.push(p);
+    else if(["WING","LW","RW","LM","RM"].includes(pos)) groups.WING.push(p);
+    else if(pos === "ST") groups.ST.push(p);
+  });
+
+  function renderGroup(title, list){
+
+    if(!list.length) return;
+
+    const header = document.createElement("div");
+    header.style.cssText = `
+      margin:14px 0 6px;
+      padding:6px 10px;
+      background:#111;
+      color:white;
+      font-weight:bold;
+      font-size:12px;
+      letter-spacing:1px;
+      border-radius:6px;
+      opacity:0.85;
+    `;
+    header.innerText = title;
+
+    squadDiv.appendChild(header);
+
+    list.forEach((player,index)=>{
+
+      const sellValue = getQuickSellValue(player);
+
+      const div = document.createElement("div");
+      div.className = "squad-player";
+
+      div.innerHTML = `
+        <div class="squad-left">
+
+          <div class="player-topline">
+            <span class="position-group">
+              ${player.position_group}
+            </span>
+
+            <span class="position-primary">
+              ${player.position_primary || ""}
+            </span>
+          </div>
+
+          <div class="player-name">
+            ${player.name}
+          </div>
+
+          <div class="player-overall">
+            ${player.overall} OVR
+          </div>
+
+        </div>
+
+        <div class="sell-section">
+
+          <span class="sell-value">
+            ${sellValue.toLocaleString()}
+          </span>
+
+          <button
+            class="sell-btn"
+            onclick="quickSell(${squad.indexOf(player)})"
+          >
+            Quick Sell
+          </button>
+
+        </div>
+      `;
+
+      squadDiv.appendChild(div);
+    });
+  }
+
+  renderGroup("GOALKEEPERS", groups.GK);
+  renderGroup("DEFENDERS", groups.DEF);
+  renderGroup("MIDFIELDERS", groups.MID);
+  renderGroup("WINGERS", groups.WING);
+  renderGroup("STRIKERS", groups.ST);
+
+  document.getElementById("squadCount").innerText =
+    `(${squad.length})`;
+}
+
+function getColor(o){
+  if(o >= 88) return "gold";
+  if(o >= 85) return "#3498db";
+  return "#95a5a6";
+}
+
+function getQuickSellValue(player){
+
+  const tier = (player.rating_tier || "").toUpperCase();
+
+  switch(tier){
+    case "S": return 120000;
+    case "A": return 60000;
+    case "B": return 25000;
+    case "C": return 10000;
+    default: return 5000;
+  }
+
+}
+
+function quickSell(index){
+
+  const player = getActiveTeam().squad[index];
+
+  if(!player) return;
+
+  const team = getActiveTeam();
+  team.coins += getQuickSellValue(player);
+  updateCoinsUI();
+
+  getActiveTeam().squad.splice(index,1);
+
+  updateCoinsUI();
+  renderSquad();
+}
+
+// ---------------- SAVE GAME ----------------
+
+function getSaveData() {
+
+  return {
+    teams,
+    draftTeamIndex,
+    draftDirection,
+    draftPickNumber,
+    currentRound,
+    draftHistory,
+    usedPlayerIds: Array.from(usedPlayerIds),
+    gameState,
+    timestamp: Date.now()
+  };
+}
+
+function saveGame(){
+
+  const data = getSaveData();
+
+  localStorage.setItem(
+    "fifa_pack_save",
+    JSON.stringify(data)
+  );
+}
+
+// ---------------- LOAD GAME ----------------
+
+function loadGame(){
+
+  const raw = localStorage.getItem("fifa_pack_save");
+
+  if(!raw){
+    alert("No save found");
+    return;
+  }
+
+  isLoading = true;
+
+  const save = JSON.parse(raw);
+
+  teams = save.teams || [];
+  activeTeamIndex = save.activeTeamIndex ?? 0;
+
+  draftTeamIndex = save.draftTeamIndex ?? 0;
+  draftDirection = save.draftDirection ?? 1;
+  draftPickNumber = save.draftPickNumber ?? 1;
+  currentRound = save.currentRound ?? 1;
+  draftHistory = save.draftHistory ?? [];
+
+  usedPlayerIds = new Set(save.usedPlayerIds || []);
+
+  // 🔥 HARD RESET UI STATE
+  selectedPlayer = null;
+  currentPackPlayers = [];
+  gameState = "IDLE";
+
+  // 🔥 IMPORTANT SYNC RULE
+  activeTeamIndex = draftTeamIndex;
+
+  syncUI();
+  renderSquad();
+  renderDraftTracker();
+
+  isLoading = false;
+
+  alert("Save loaded");
+}
+
+function exportSave(){
+
+  const data = getSaveData();
+
+  const blob = new Blob(
+    [JSON.stringify(data, null, 2)],
+    { type: "application/json" }
+  );
+
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "fifa-pack-save.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function importSave(event){
+
+  const file = event.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(e){
+
+    const save = JSON.parse(e.target.result);
+
+    teams = save.teams || [];
+    activeTeamIndex = save.activeTeamIndex || 0;
+    usedPlayerIds = new Set(save.usedPlayerIds || []);
+
+    draftTeamIndex = save.draftTeamIndex ?? 0;
+    draftPickNumber = save.draftPickNumber ?? 1;
+    draftHistory = save.draftHistory ?? [];
+    currentRound = save.currentRound ?? 1;
+    draftDirection = save.draftDirection ?? 1;
+    draftMode = save.draftMode ?? "turn";
+
+    gameState = "IDLE";
+
+    syncUI();
+    renderSquad();
+    renderDraftTracker();
+
+    alert("Save imported");
+  };
+
+  reader.readAsText(file);
+}
+
+function switchTeam(index){
+  activeTeamIndex = index;
+  syncUI();
+}
+
+window.openPack = openPack;
+
+function updateTeamButtons(){
+  document.getElementById("teamBtn0").innerText = teams[0].name;
+  document.getElementById("teamBtn1").innerText = teams[1].name;
+
+  document.getElementById("teamBtn0").style.fontWeight =
+    activeTeamIndex === 0 ? "bold" : "normal";
+
+  document.getElementById("teamBtn1").style.fontWeight =
+    activeTeamIndex === 1 ? "bold" : "normal";
+}
+
+function renameActiveTeam(){
+  const input = document.getElementById("teamNameInput");
+  const newName = input.value.trim();
+
+  if(!newName) return;
+
+  getActiveTeam().name = newName;
+
+  input.value = "";
+
+  updateCoinsUI();
+  updateTeamButtons();
+}
+
+function initTeams(count = 2) {
+  teams = [];
+
+  for (let i = 0; i < count; i++) {
+    teams.push({
+      name: `Team ${String.fromCharCode(65 + i)}`,
+      squad: [],
+      coins: 1000000
+    });
+  }
+
+  activeTeamIndex = 0;
+
+  renderTeamButtons(); // 🔥 ADD THIS
+}
+
+function changeTeamCount(value) {
+  initTeams(parseInt(value));
+  renderSquad();
+  updateCoinsUI();
+  renderTeamButtons(); // 🔥 safety
+}
+
+function renderTeamButtons() {
+  const container = document.getElementById("teamButtons");
+  container.innerHTML = "";
+
+  teams.forEach((team, index) => {
+    const btn = document.createElement("button");
+
+    btn.innerText = team.name;
+    btn.onclick = () => switchTeam(index);
+
+    if (index === activeTeamIndex) {
+  btn.innerHTML = `👉 ${team.name}`;
+  btn.style.fontWeight = "bold";
+}
+
+    container.appendChild(btn);
+  });
+}
+
+function setDraftMode(mode){
+  draftMode = mode;
+  draftDirection = 1;
+}
+
+function advanceDraftTurn() {
+
+  const teamCount = teams.length;
+
+  if (draftMode === "turn") {
+    draftTeamIndex = (draftTeamIndex + 1) % teamCount;
+  }
+
+  if (draftMode === "snake") {
+
+    draftTeamIndex += draftDirection;
+
+    if (draftTeamIndex >= teamCount) {
+      draftTeamIndex = teamCount - 1;
+      draftDirection = -1;
+    }
+
+    if (draftTeamIndex < 0) {
+      draftTeamIndex = 0;
+      draftDirection = 1;
+    }
+  }
+
+  // 🔥 THIS IS THE FIX
+  activeTeamIndex = draftTeamIndex;
+
+  syncUI();
+}
+
+function renderDraftTracker() {
+  const container = document.getElementById("draftBoard");
+  if (!container) return;
+
+  if (!draftHistory.length) {
+    container.innerHTML = "<i>No picks yet</i>";
+    return;
+  }
+
+  const teamNames = teams.map(t => t.name);
+  const maxRound = Math.max(...draftHistory.map(p => p.round || 1));
+
+  let html = `<table class="draft-table">`;
+
+  // HEADER
+  html += `<tr>
+    <th style="position:sticky;left:0;z-index:2;">Round</th>`;
+
+  teamNames.forEach(t => {
+    html += `<th>${t}</th>`;
+  });
+
+  html += `</tr>`;
+
+  // ROUNDS
+  for (let r = 1; r <= maxRound; r++) {
+
+    html += `<tr>`;
+
+    html += `<td class="round-cell" style="position:sticky;left:0;">R${r}</td>`;
+
+    teamNames.forEach(team => {
+
+      const pick = draftHistory.find(p =>
+        p.round === r && p.team === team
+      );
+
+      if (!pick) {
+        html += `<td></td>`;
+        return;
+      }
+
+      const color =
+        pick.overall >= 88 ? "#f1c40f" :
+        pick.overall >= 85 ? "#3498db" :
+        "#bdc3c7";
+
+      html += `
+        <td class="pick">
+          <div style="
+            background:${color};
+            color:#111;
+            border-radius:6px;
+            padding:6px;
+            font-weight:bold;
+          ">
+            #${pick.pick}
+          </div>
+          <div>${pick.player}</div>
+          <div style="opacity:0.7;font-size:11px;">
+            ${pick.overall !== "-" ? pick.overall + " OVR" : "SKIPPED"}
+          </div>
+        </td>
+      `;
+    });
+
+    html += `</tr>`;
+  }
+
+  html += `</table>`;
+
+  container.innerHTML = html;
+}
+
+function syncUI() {
+
+  const viewTeam = teams[activeTeamIndex];
+  const turnTeam = teams[draftTeamIndex];
+
+  document.getElementById("coins").innerText =
+    Number(viewTeam.coins).toLocaleString();
+
+  document.getElementById("activeTeamDisplay").innerText =
+    `Viewing: ${viewTeam.name} | On The Clock: ${turnTeam.name}`;
+
+  renderSquad();
+  renderTeamButtons();
+}
+
+function initGame(){
+  initTeams(2);
+  renderTeamButtons();
+  updateCoinsUI();
+  renderSquad();
+}
+
+window.onload = function(){
+  initGame();
+};
+
+</script>
+
+</body>
+</html>
