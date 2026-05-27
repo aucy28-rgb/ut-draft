@@ -1351,9 +1351,13 @@ function initGame(){
 }
 
 function startRealtimeSync() {
+  if (!window.firebaseOnValue || !window.gameRef) {
+    console.error("Firebase not ready yet");
+    return;
+  }
+
   window.firebaseOnValue(window.gameRef, (snapshot) => {
     const save = snapshot.val();
-
     if (!save) return;
 
     teams = save.teams || [];
@@ -1363,7 +1367,6 @@ function startRealtimeSync() {
     draftPickNumber = save.draftPickNumber ?? 1;
     currentRound = save.currentRound ?? 1;
     draftHistory = save.draftHistory ?? [];
-
     usedPlayerIds = new Set(save.usedPlayerIds || []);
 
     selectedPlayer = null;
@@ -1372,37 +1375,17 @@ function startRealtimeSync() {
 
     syncUI();
     renderDraftTracker();
-
-    document.getElementById("output").innerHTML = "";
   });
 }
 
-window.onload = function(){
+window.onload = async function () {
   initGame();
-  startRealtimeSync();
+
+  // wait a moment so Firebase module finishes loading
+  setTimeout(() => {
+    startRealtimeSync();
+  }, 300);
 };
-
-window.firebaseOnValue(window.gameRef, (snap) => {
-
-  const data = snap.val();
-  if (!data) return;
-
-  console.log("SYNC RECEIVED", data);
-
-  teams = data.teams || [];
-  activeTeamIndex = data.activeTeamIndex ?? 0;
-  draftTeamIndex = data.draftTeamIndex ?? 0;
-  draftHistory = data.draftHistory ?? [];
-
-  usedPlayerIds = new Set(data.usedPlayerIds || []);
-
-  gameState = "IDLE";
-  selectedPlayer = null;
-  currentPackPlayers = [];
-
-  syncUI();
-  renderDraftTracker();
-});
 
 </script>
 
