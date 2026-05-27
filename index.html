@@ -1348,7 +1348,7 @@ function initGame(){
 }
 
 function startRealtimeSync() {
-  onValue(gameRef, (snapshot) => {
+  window.firebaseOnValue(window.gameRef, (snapshot) => {
     const save = snapshot.val();
 
     if (!save) return;
